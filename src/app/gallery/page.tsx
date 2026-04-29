@@ -111,6 +111,44 @@ export default function GalleryPage() {
     }
   }
 
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      const img = new Image()
+      
+      img.onload = () => {
+        let width = img.width
+        let height = img.height
+        const maxSize = 1600
+
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = (height * maxSize) / width
+            width = maxSize
+          } else {
+            width = (width * maxSize) / height
+            height = maxSize
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        ctx.drawImage(img, 0, 0, width, height)
+
+        canvas.toBlob(
+          (blob) => {
+            resolve(new File([blob!], file.name, { type: 'image/jpeg' }))
+          },
+          'image/jpeg',
+          0.8
+        )
+      }
+      
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
   const handleUpload = async () => {
     if (!selectedPhoto || !user) return
 
@@ -119,8 +157,12 @@ export default function GalleryPage() {
       const fileInput = fileInputRef.current
       if (!fileInput?.files?.[0]) return
 
-      const file = fileInput.files[0]
+      let file = fileInput.files[0]
       
+      if (file.size > 4 * 1024 * 1024) {
+        file = await compressImage(file)
+      }
+
       const formData = new FormData()
       formData.append('file', file)
 
