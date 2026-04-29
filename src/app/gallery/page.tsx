@@ -111,8 +111,8 @@ export default function GalleryPage() {
     }
   }
 
-  const compressImage = (file: File, quality: number = 0.7): Promise<File> => {
-    return new Promise((resolve) => {
+  const compressImage = (file: File, quality: number = 0.6): Promise<File> => {
+    return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')!
       const img = new Image()
@@ -120,14 +120,14 @@ export default function GalleryPage() {
       img.onload = () => {
         let width = img.width
         let height = img.height
-        const maxSize = 1200
+        const maxSize = 1000
 
         if (width > maxSize || height > maxSize) {
           if (width > height) {
-            height = (height * maxSize) / width
+            height = Math.round((height * maxSize) / width)
             width = maxSize
           } else {
-            width = (width * maxSize) / height
+            width = Math.round((width * maxSize) / height)
             height = maxSize
           }
         }
@@ -138,13 +138,18 @@ export default function GalleryPage() {
 
         canvas.toBlob(
           (blob) => {
-            resolve(new File([blob!], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }))
+            if (blob) {
+              resolve(new File([blob], 'photo.jpg', { type: 'image/jpeg' }))
+            } else {
+              reject(new Error('Compression failed'))
+            }
           },
           'image/jpeg',
           quality
         )
       }
       
+      img.onerror = () => reject(new Error('Failed to load image'))
       img.src = URL.createObjectURL(file)
     })
   }
@@ -159,8 +164,12 @@ export default function GalleryPage() {
 
       let file = fileInput.files[0]
       
-      if (file.size > 2 * 1024 * 1024) {
-        const quality = file.size > 8 * 1024 * 1024 ? 0.5 : 0.7
+      if (file.size > 1 * 1024 * 1024) {
+        let quality = 0.6
+        if (file.size > 10 * 1024 * 1024) quality = 0.3
+        else if (file.size > 5 * 1024 * 1024) quality = 0.4
+        else if (file.size > 3 * 1024 * 1024) quality = 0.5
+        
         file = await compressImage(file, quality)
       }
 
