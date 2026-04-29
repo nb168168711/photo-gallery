@@ -23,23 +23,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: '无权删除' }, { status: 403 })
     }
 
-    if (photo.image_url) {
-      const fileName = photo.image_url.split('/').pop()
-      if (fileName) {
-        await fetch(`${request.nextUrl.origin}/api/upload`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName }),
-        })
-      }
-    }
-
     const { error: deleteError } = await supabase
       .from('photos')
       .delete()
       .eq('id', photoId)
+      .eq('user_id', userId)
 
     if (deleteError) {
+      console.error('Delete from supabase error:', deleteError)
       return NextResponse.json({ error: '删除失败' }, { status: 500 })
     }
 
