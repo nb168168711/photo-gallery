@@ -111,7 +111,7 @@ export default function GalleryPage() {
     }
   }
 
-  const compressImage = (file: File, quality: number = 0.6): Promise<File> => {
+  const compressImage = (file: File, maxSizeKB: number = 2000): Promise<File> => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')!
@@ -120,7 +120,19 @@ export default function GalleryPage() {
       img.onload = () => {
         let width = img.width
         let height = img.height
-        const maxSize = 1000
+        let quality = 0.7
+        let maxSize = 800
+
+        if (file.size > 10 * 1024 * 1024) {
+          maxSize = 600
+          quality = 0.3
+        } else if (file.size > 5 * 1024 * 1024) {
+          maxSize = 700
+          quality = 0.4
+        } else if (file.size > 2 * 1024 * 1024) {
+          maxSize = 800
+          quality = 0.5
+        }
 
         if (width > maxSize || height > maxSize) {
           if (width > height) {
@@ -139,6 +151,7 @@ export default function GalleryPage() {
         canvas.toBlob(
           (blob) => {
             if (blob) {
+              console.log(`Compressed: ${file.size} -> ${blob.size} bytes`)
               resolve(new File([blob], 'photo.jpg', { type: 'image/jpeg' }))
             } else {
               reject(new Error('Compression failed'))
@@ -165,12 +178,7 @@ export default function GalleryPage() {
       let file = fileInput.files[0]
       
       if (file.size > 1 * 1024 * 1024) {
-        let quality = 0.6
-        if (file.size > 10 * 1024 * 1024) quality = 0.3
-        else if (file.size > 5 * 1024 * 1024) quality = 0.4
-        else if (file.size > 3 * 1024 * 1024) quality = 0.5
-        
-        file = await compressImage(file, quality)
+        file = await compressImage(file)
       }
 
       const formData = new FormData()
