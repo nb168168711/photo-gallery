@@ -111,7 +111,7 @@ export default function GalleryPage() {
     }
   }
 
-  const compressImage = (file: File): Promise<File> => {
+  const compressImage = (file: File, quality: number = 0.7): Promise<File> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')!
@@ -120,7 +120,7 @@ export default function GalleryPage() {
       img.onload = () => {
         let width = img.width
         let height = img.height
-        const maxSize = 1600
+        const maxSize = 1200
 
         if (width > maxSize || height > maxSize) {
           if (width > height) {
@@ -138,10 +138,10 @@ export default function GalleryPage() {
 
         canvas.toBlob(
           (blob) => {
-            resolve(new File([blob!], file.name, { type: 'image/jpeg' }))
+            resolve(new File([blob!], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }))
           },
           'image/jpeg',
-          0.8
+          quality
         )
       }
       
@@ -159,8 +159,9 @@ export default function GalleryPage() {
 
       let file = fileInput.files[0]
       
-      if (file.size > 4 * 1024 * 1024) {
-        file = await compressImage(file)
+      if (file.size > 2 * 1024 * 1024) {
+        const quality = file.size > 8 * 1024 * 1024 ? 0.5 : 0.7
+        file = await compressImage(file, quality)
       }
 
       const formData = new FormData()
