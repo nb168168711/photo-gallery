@@ -13,14 +13,6 @@ const s3Client = new S3Client({
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('R2 Config:', {
-      accountId: process.env.R2_ACCOUNT_ID,
-      bucket: process.env.R2_BUCKET_NAME,
-      publicUrl: process.env.R2_PUBLIC_URL,
-      hasAccessKey: !!process.env.R2_ACCESS_KEY_ID,
-      hasSecretKey: !!process.env.R2_SECRET_ACCESS_KEY,
-    })
-
     const formData = await request.formData()
     const file = formData.get('file') as File
     
@@ -35,13 +27,13 @@ export async function POST(request: NextRequest) {
     const isGif = ext === 'gif'
     const isImage = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'tiff'].includes(ext)
     
-    let finalBuffer = buffer
+    let finalBuffer: Buffer = buffer
     let finalExt = ext
     let contentType = file.type || 'application/octet-stream'
 
     if (isImage && !isGif) {
       try {
-        finalBuffer = await sharp(buffer)
+        const compressed = await sharp(buffer)
           .resize(2000, 2000, { 
             fit: 'inside',
             withoutEnlargement: true 
@@ -51,6 +43,7 @@ export async function POST(request: NextRequest) {
             mozjpeg: true
           })
           .toBuffer()
+        finalBuffer = Buffer.from(compressed)
         finalExt = 'jpg'
         contentType = 'image/jpeg'
       } catch (sharpError) {
@@ -59,8 +52,6 @@ export async function POST(request: NextRequest) {
     }
 
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${finalExt}`
-
-    console.log('Uploading to R2:', fileName)
 
     await s3Client.send(new PutObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME!,
@@ -71,12 +62,10 @@ export async function POST(request: NextRequest) {
 
     const publicUrl = `${process.env.R2_PUBLIC_URL}/${fileName}`
 
-    console.log('Upload success:', publicUrl)
-
     return NextResponse.json({ url: publicUrl, fileName })
   } catch (error: any) {
-    console.error('Upload error details:', error.message, error.stack)
-    return NextResponse.json({ error: '上传失败', details: error.message }, { status: 500 })
+    console.error('Upload error:', error)
+    return NextResponse.json({ error: '上传失败' }, { status: 500 })
   }
 }
 
